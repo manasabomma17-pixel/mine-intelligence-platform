@@ -2,29 +2,30 @@
 
 ## Project
 
-- Python + React prototype for Smart India Hackathon (SIH26023): AI-Powered Mining & Geological Intelligence Platform.
-- Backend: FastAPI + SQLite (SQLAlchemy) + ChromaDB + LangChain + ReportLab. Frontend: React + Vite + Tailwind + Recharts.
-- **Read `IMPLEMENTATION_PLAN.md` first** — it is the authoritative blueprint (architecture, folder layout, schema, pipelines, endpoints, dependencies, dev phases). Build against it.
+- Smart India Hackathon (SIH26023) prototype: AI-Powered Mining & Geological Intelligence Platform.
+- **Frontend-first interactive demo.** All data is mocked. No real OCR, RAG, LLM, ChromaDB, PostgreSQL, auth, GIS, or voice.
+- Tech: React + Vite + Tailwind CSS + Recharts. FastAPI serves the built SPA.
+- **Read `IMPLEMENTATION_PLAN.md` first** — it is the authoritative blueprint.
 
 ## Commands
 
-- Backend: `cd backend && uvicorn run:app --reload` (or run `python run.py`)
 - Frontend dev: `cd frontend && npm run dev` (Vite proxies `/api` to backend)
-- Frontend build (served by FastAPI): `npm run build`
-- Tests: `pytest tests/` (once added)
+- Frontend build (served by FastAPI): `cd frontend && npm run build`
+- Backend: `cd backend && uvicorn run:app --reload` (serves built SPA at :8000)
 
 ## Conventions
 
-- Single monolith: FastAPI serves the built SPA from `frontend/dist` — one server for demo.
-- No microservices, no auth (prototype), no extraneous infra.
-- SQLite holds relational metadata + normalized production records; Chroma holds embeddings, linked via `Document.id`/`chunk.doc_id`.
-- LLM provider abstracted via LangChain and set by env var (`LLM_PROVIDER`); default OpenAI. Keys live in `.env` (gitignored); use `.env.example`.
-- Seed data lives in `backend/app/data/` (committed) so the demo works offline.
+- Single monolith: FastAPI is a thin static-file server for the built React SPA.
+- No microservices, no real auth, no extraneous infra.
+- All "intelligence" lives in frontend mock data and React component logic.
+- The backend has zero business logic — it only serves the SPA and a health endpoint.
+- Recharts for all charts. Tailwind for all styling. No UI library.
 
 ## Gotchas
 
-- OCR (`pytesseract`) requires the system `tesseract` binary — not just the pip package.
+- `uvicorn run:app` requires the `app` import in `backend/run.py`.
+- `frontend/dist` must be built before the backend SPA mount works.
 
-## Early-stage note
+## Scope note
 
-- Repo is scaffolding/plan only so far; no application code has been committed yet.
+- This is a hackathon demo, not production software. Prioritize polish, interactivity, and a clear user journey over backend complexity.

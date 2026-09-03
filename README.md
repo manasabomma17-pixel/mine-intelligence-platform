@@ -1,60 +1,42 @@
 # Mine Intelligence Platform
 
-AI-Powered Mining & Geological Intelligence Platform — a Smart India Hackathon (SIH26023) prototype.
+AI-Powered Mining & Geological Intelligence Platform — a Smart India Hackathon (SIH26023) **prototype/demo**.
 
 ## Project purpose
 
-Fragmented mining/geological documents and structured production data are converted into searchable,
-evidence-backed intelligence with three features:
+An interactive frontend demo that walks through the complete user journey of a mining intelligence
+platform — login, dashboard, AI assistant with citations, production analytics (trends, anomalies,
+forecast), and generated intelligence reports. **All data is mocked**; no real AI, OCR, or databases.
 
-1. **AI Mining Assistant** — ingest PDFs (including scanned ones via OCR), chunk + embed them, and
-   answer natural-language questions with grounded answers and document/page citations (RAG).
-2. **Production Intelligence** — upload Excel/CSV production data, visualize trends, target vs actual,
-   mine/mineral comparisons, detect anomalies, and forecast production.
-3. **Automated Mine Intelligence Report** — combines RAG findings, production analytics, anomalies,
-   forecasts, and citations into a downloadable PDF report.
+## Features (mock)
+
+1. **Login** — mock authentication (any credentials).
+2. **Dashboard** — key stats + mini charts at a glance.
+3. **AI Mining Assistant** — mock RAG-style Q&A with document/page citations.
+4. **Production Intelligence** — mock trends, target vs actual, comparisons, anomaly detection, forecasting.
+5. **Intelligence Reports** — mock report generation and preview.
 
 ## Technology stack
 
-- **Frontend:** React (Vite), Tailwind CSS, Recharts
-- **Backend:** Python, FastAPI
-- **Database:** SQLite (SQLAlchemy)
-- **Vector database:** ChromaDB
-- **AI:** LangChain, LLM API, embeddings
-- **Data:** Pandas, NumPy, scikit-learn / statsmodels
-- **Document processing:** PyMuPDF, Tesseract OCR
-- **Report:** ReportLab
+- **Frontend:** React (Vite), Tailwind CSS, Recharts, react-router-dom
+- **Backend:** Python, FastAPI (thin static-file server for the built SPA)
+- All "intelligence" is mock data in the React frontend.
 
-> See `IMPLEMENTATION_PLAN.md` for the full architecture, schema, pipelines, and API design.
+> See `IMPLEMENTATION_PLAN.md` for the full prototype design.
 
 ## Repository layout
 
 ```
-backend/    FastAPI app
-frontend/   React (Vite + Tailwind)
-data/       Runtime data (DB, uploads, chroma, reports) — gitignored
+backend/    FastAPI app (serves the built SPA + health endpoint)
+frontend/   React (Vite + Tailwind); all mock data lives in src/mock/
+data/       Runtime data — gitignored
 docs/       Documentation
 ```
 
 ## Prerequisites
 
-- Python 3.10+
 - Node.js 18+
-- (Later phases) Tesseract OCR binary and an LLM API key
-
-## How to run the backend
-
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env             # then fill in values as needed
-uvicorn run:app --reload         # or: python run.py
-```
-
-Backend runs at http://localhost:8000. Health check: http://localhost:8000/api/health.
-Interactive API docs at http://localhost:8000/docs.
+- Python 3.10+ (only needed to serve the built app, not for development)
 
 ## How to run the frontend (dev)
 
@@ -64,7 +46,19 @@ npm install
 npm run dev
 ```
 
-Frontend runs at http://localhost:5173. The Vite dev server proxies `/api` to the backend.
+Frontend runs at http://localhost:5173.
+
+## How to run the backend
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn run:app --reload         # or: python run.py
+```
+
+Backend runs at http://localhost:8000. Health check: http://localhost:8000/api/health.
 
 ## How to run everything for a demo (single server)
 
@@ -75,9 +69,3 @@ cd ../backend && uvicorn run:app --reload
 
 FastAPI serves the built SPA from `frontend/dist`, so one server at http://localhost:8000
 serves the whole app.
-
-## Tests
-
-```bash
-cd backend && pytest tests/       # once tests are added
-```
