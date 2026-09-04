@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { apiJson } from "../api/client";
 import {
   AreaChart,
   Area,
@@ -11,13 +12,13 @@ import {
   Bar,
   Legend,
 } from "recharts";
-import { kpiData, productionData, recentDocuments, recentAnomalies, quickActions } from "../data/mockData";
+
 import { KpiCard } from "../components/KpiCard";
 import { ChartCard } from "../components/ChartCard";
-import { DocumentCard } from "../components/DocumentCard";
-import { AnomalyCard } from "../components/AnomalyCard";
+
+
 import { AnomalyModal } from "../components/AnomalyModal";
-import { QuickActionCard } from "../components/QuickActionCard";
+
 import { Icon } from "../components/Icon";
 
 const fmt = (v) => Number(v).toLocaleString();
@@ -38,17 +39,35 @@ const kindStyles = {
 
 export function Dashboard() {
   const [selectedAnomaly, setSelectedAnomaly] = useState(null);
+  const [productionData, setProductionData] = useState(null);
+  const [kpiData, setKpiData] = useState(null);
+  const [forecastData, setForecastData] = useState(null);
 
+    useEffect(() => {
+      Promise.all([
+        apiJson("/production"),
+        apiJson("/production/kpis"),
+        apiJson("/forecast"),
+      ])
+        .then(([production, kpis, forecast]) => {
+          
+          setProductionData(production);
+          setKpiData(kpis);
+          setForecastData(forecast);
+        })
+        .catch((error) => {
+          console.error("Dashboard API error:", error);
+        });
+    }, []);
+
+  if (!productionData || !kpiData || !forecastData) {
+    return <div className="p-6 text-stone-500">Loading dashboard...</div>;
+  }
   const trendData = productionData.years.map((y, i) => ({
     year: String(y),
     production: productionData.actual[i],
   }));
 
-  const targetData = productionData.years.map((y, i) => ({
-    year: String(y),
-    target: productionData.target[i],
-    actual: productionData.actual[i],
-  }));
 
   return (
     <div className="space-y-6">
@@ -59,15 +78,29 @@ export function Dashboard() {
         </p>
       </div>
 
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {forecastData.years.map((year, index) => (
+          <ChartCard key={year} title={year}>
+            <div className="text-2xl font-semibold text-stone-900">
+              {Number(forecastData.values[index]).toFixed(2)} MT
+            </div>
+            <div className="mt-1 text-xs text-stone-400">
+              Linear trend forecast
+            </div>
+          </ChartCard>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Documents" value={kpiData.totalDocuments} icon={<Icon name="documents" />} accent="blue" footer="Across all connected mines" />
-        <KpiCard label="Processed Documents" value={kpiData.processedDocuments} icon={<Icon name="file" />} accent="green" footer={`${Math.round((kpiData.processedDocuments / kpiData.totalDocuments) * 100)}% processing complete`} />
-        <KpiCard label="Production Anomalies" value={kpiData.productionAnomalies} icon={<Icon name="orange" />} accent="red" footer="2 flagged as high priority" />
-        <KpiCard label="Forecast Available" value="2026–2028" icon={<Icon name="trend" />} accent="amber" footer="Mine X production outlook" />
+        <KpiCard label="Documents" value="—" icon={<Icon name="documents" />} accent="blue" footer="Document intelligence"/>
+        <KpiCard label="Processed Documents" value="—" icon={<Icon name="file" />} accent="green" footer="Document processing"/>
+        <KpiCard label="Production Anomalies"  value={kpiData.anomalies}  icon={<Icon name="orange" />}  accent="red" footer="Detected from official production data"/>
+        <KpiCard label="Forecast Available"  value={`${forecastData.years.length} Years`}  icon={<Icon name="trend" />}  accent="amber"  footer={`${forecastData.years[0]} to ${forecastData.years[2]}`}/>
+
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <ChartCard title="Production Trend" action={<span className="text-xs text-stone-400">Mine X · tonnes/yr</span>}>
+        <ChartCard title="Production Trend" action={<span className="text-xs text-stone-400">India · MT/year</span>}>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={trendData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
@@ -79,25 +112,25 @@ export function Dashboard() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e6dccd" vertical={false} />
                 <XAxis dataKey="year" tick={{ fontSize: 12, fill: "#756a5d" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#756a5d" }} axisLine={false} tickLine={false} width={55} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v) => `${fmt(v)} tonnes`} contentStyle={{ borderRadius: 8, border: "1px solid #e6dccd", fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 11, fill: "#756a5d" }} axisLine={false} tickLine={false} width={55} tickFormatter={(v) => `${Number(v).toFixed(0)}`} />
+                <Tooltip formatter={(v) => `${fmt(v)} MT`} contentStyle={{ borderRadius: 8, border: "1px solid #e6dccd", fontSize: 12 }} />
                 <Area type="monotone" dataKey="production" stroke="#c8872d" strokeWidth={2} fill="url(#prodDash)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </ChartCard>
 
-        <ChartCard title="Target vs Actual" action={<span className="text-xs text-stone-400">tonnes/yr</span>}>
+        <ChartCard title="Annual Production" action={<span className="text-xs text-stone-400">MT/year</span>}>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={targetData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }} barGap={4}>
+              <BarChart data={trendData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }} barGap={4}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e6dccd" vertical={false} />
                 <XAxis dataKey="year" tick={{ fontSize: 12, fill: "#756a5d" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#756a5d" }} axisLine={false} tickLine={false} width={55} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v) => fmt(v)} contentStyle={{ borderRadius: 8, border: "1px solid #e6dccd", fontSize: 12 }} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="target" name="Target" fill="#a89a86" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="actual" name="Actual" fill="#b86b2a" radius={[4, 4, 0, 0]} />
+                <YAxis tick={{ fontSize: 11, fill: "#756a5d" }} axisLine={false} tickLine={false} width={55} tickFormatter={(v) => `${Number(v).toFixed(0)}`} />
+                <Tooltip formatter={(v) => `${fmt(v)} MT`} contentStyle={{ borderRadius: 8, border: "1px solid #e6dccd", fontSize: 12 }} />
+                
+                
+                <Bar dataKey="production" name="Actual Production" fill="#b86b2a" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -106,34 +139,20 @@ export function Dashboard() {
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <ChartCard title="Recent Documents" className="xl:col-span-1">
-          <div className="space-y-2">
-            {recentDocuments.slice(0, 3).map((doc) => (
-              <DocumentCard key={doc.id} doc={doc} />
-            ))}
+          <div className="py-8 text-center text-sm text-stone-400">
+            No documents processed yet
           </div>
         </ChartCard>
 
         <ChartCard title="Recent Activity" className="xl:col-span-1">
-          <div className="space-y-3">
-            {recentActivity.map((a) => (
-              <div key={a.id} className="flex items-center gap-3">
-                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${kindStyles[a.kind]}`}>
-                  {a.kind === "doc" ? "D" : a.kind === "anomaly" ? "!" : a.kind === "report" ? "R" : "F"}
-                </span>
-                <div className="min-w-0">
-                  <div className="truncate text-sm text-stone-700">{a.text}</div>
-                  <div className="text-xs text-stone-400">{a.time}</div>
-                </div>
-              </div>
-            ))}
+          <div className="py-8 text-center text-sm text-stone-400">
+            No recent activity
           </div>
         </ChartCard>
 
         <ChartCard title="Quick Actions" className="xl:col-span-1">
-          <div className="flex flex-col gap-3">
-            {quickActions.map((a) => (
-              <QuickActionCard key={a.id} {...a} />
-            ))}
+          <div className="py-8 text-center text-sm text-stone-400">
+            No quick actions available
           </div>
         </ChartCard>
       </div>

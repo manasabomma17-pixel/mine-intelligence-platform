@@ -55,7 +55,10 @@ export function Production() {
     };
   }, []);
 
-  const trendData = pd.years.map((y, i) => ({ year: String(y), actual: pd.actual[i], target: pd.target[i] }));
+  const trendData = pd.years.map((y, i) => ({
+  year: String(y),
+  actual: pd.actual[i],
+  }));
 
   const forecastSeries = [];
   trendData.forEach((d) =>
@@ -76,7 +79,7 @@ export function Production() {
       <div>
         <h2 className="text-2xl font-semibold text-stone-900">Production Intelligence</h2>
         <p className="mt-1 text-sm text-stone-500">
-          Analyze production trends, anomalies and forecasts for Mine X.
+          Analyze India's raw coal production trends, anomalies and forecasts.
         </p>
       </div>
 
@@ -84,18 +87,18 @@ export function Production() {
         <KpiCard
           label="Current Production"
           value={fmt(kpis.currentProduction)}
-          unit="t"
+          unit="MT"
           icon={<Icon name="production" />}
           accent="blue"
           footer={`${kpis.currentYear} annual`}
         />
         <KpiCard
-          label="Target"
-          value={fmt(kpis.target)}
-          unit="t"
+          label="Historical Years"
+          value={pd.actual.length}
+          unit="years"
           icon={<Icon name="target" />}
           accent="slate"
-          footer="2025 annual target"
+          footer="2015-16 to 2024-25"
         />
         <KpiCard
           label="Change %"
@@ -116,7 +119,7 @@ export function Production() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <ChartCard
           title="Production Trend"
-          action={<span className="text-xs text-stone-400">Mine X · tonnes/yr</span>}
+          action={<span className="text-xs text-stone-400">India · MT/year</span>}
         >
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -129,9 +132,9 @@ export function Production() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e6dccd" vertical={false} />
                 <XAxis dataKey="year" tick={{ fontSize: 12, fill: "#756a5d" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#756a5d" }} axisLine={false} tickLine={false} width={55} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v) => `${fmt(v)} tonnes`} contentStyle={{ borderRadius: 8, border: "1px solid #e6dccd", fontSize: 12 }} />
-                <ReferenceLine y={87000} stroke="#ef4444" strokeDasharray="4 4" />
+                <YAxis tick={{ fontSize: 11, fill: "#756a5d" }} axisLine={false} tickLine={false} width={55} tickFormatter={(v) => `${Number(v).toFixed(0)}`} />
+                <Tooltip formatter={(v) => `${fmt(v)} MT`} contentStyle={{ borderRadius: 8, border: "1px solid #e6dccd", fontSize: 12 }} />
+                
                 <Area type="monotone" dataKey="actual" name="Actual" stroke="#c8872d" strokeWidth={2} fill="url(#trend)" />
               </AreaChart>
             </ResponsiveContainer>
@@ -139,18 +142,18 @@ export function Production() {
         </ChartCard>
 
         <ChartCard
-          title="Actual vs Target"
-          action={<span className="text-xs text-stone-400">tonnes/yr</span>}
+          title="Annual Production"
+          action={<span className="text-xs text-stone-400">MT/year</span>}
         >
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={trendData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }} barGap={4}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e6dccd" vertical={false} />
                 <XAxis dataKey="year" tick={{ fontSize: 12, fill: "#756a5d" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#756a5d" }} axisLine={false} tickLine={false} width={55} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v) => fmt(v)} contentStyle={{ borderRadius: 8, border: "1px solid #e6dccd", fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 11, fill: "#756a5d" }} axisLine={false} tickLine={false} width={55} tickFormatter={(v) => `${Number(v).toFixed(0)}`} />
+                <Tooltip formatter={(v) => `${fmt(v)} MT`} contentStyle={{ borderRadius: 8, border: "1px solid #e6dccd", fontSize: 12 }} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="target" name="Target" fill="#a89a86" radius={[4, 4, 0, 0]} />
+                
                 <Bar dataKey="actual" name="Actual" fill="#b86b2a" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -161,16 +164,16 @@ export function Production() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <ChartCard
           title="Forecast"
-          action={<span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-200">Prototype Forecast</span>}
+          action={<span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-200">Trend Forecast</span>}
         >
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={forecastSeries} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e6dccd" vertical={false} />
                 <XAxis dataKey="year" tick={{ fontSize: 12, fill: "#756a5d" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#756a5d" }} axisLine={false} tickLine={false} width={55} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                <YAxis tick={{ fontSize: 11, fill: "#756a5d" }} axisLine={false} tickLine={false} width={55} tickFormatter={(v) => `${Number(v).toFixed(0)}`} />
                 <Tooltip
-                  formatter={(v, name) => [fmt(v), name]}
+                  formatter={(v, name) => [`${fmt(v)} MT`, name]}
                   contentStyle={{ borderRadius: 8, border: "1px solid #e6dccd", fontSize: 12 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
@@ -184,7 +187,7 @@ export function Production() {
           <div className="mt-2 text-xs text-stone-400">{forecast.note}</div>
         </ChartCard>
 
-        <ChartCard title="Detected Anomalies" action={<span className="text-xs text-stone-400">{loaded ? "From demo data" : "Demo fallback"}</span>}>
+        <ChartCard title="Detected Anomalies" action={<span className="text-xs text-stone-400">{loaded ? "From official data" : "Loading..."}</span>}>
           <div className="space-y-3">
             {anom.anomalies.map((a, i) => {
               const severityCls =
@@ -250,14 +253,13 @@ function AnomalyEvidence({ anom, onClose }) {
         </div>
         <div className="rounded-lg border border-stone-200 p-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">Source</div>
-          <div className="mt-1 text-sm font-medium text-stone-800">{anom.documentRef} · p.27</div>
+          <div className="mt-1 text-sm font-medium text-stone-800">{anom.documentRef}</div>
           <p className="mt-2 text-sm leading-relaxed text-stone-600">
-            "Routine inspection observed significant production disruption caused by unplanned shaft
-            maintenance between April and September 2024. Equipment downtime for the conveyor system
-            totalled 41 days."
+            The anomaly was detected from year-over-year changes in India's official
+            raw coal production data.
           </p>
         </div>
-        <p className="mt-4 text-xs text-stone-400">Demo/sample document — not an official government record.</p>
+        <p className="mt-4 text-xs text-stone-400">Source: Ministry of Coal, Coal Directory of India 2024-25.</p>
         <div className="mt-4 flex justify-end">
           <button onClick={onClose} className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700">Close</button>
         </div>

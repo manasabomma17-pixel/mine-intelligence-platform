@@ -1,136 +1,339 @@
 """
-Demo production analytics: data, KPIs, anomaly detection, and forecasting.
+Production analytics using official Ministry of Coal data.
 
-Kept deliberately simple and transparent for the prototype. Uses pandas +
-numpy via a lightweight linear forecast and z-score anomaly detection.
+Reads coal production data from:
+backend/data/coal_production.xlsx
+
+Source:
+Coal Directory of India 2024-25
+Ministry of Coal, Government of India
 """
 
+from pathlib import Path
+
 import numpy as np
+import pandas as pd
 
-MINES = ["Mine X", "Zamania", "North Block"]
 
-YEARS = [2021, 2022, 2023, 2024, 2025]
+# ---------------------------------------------------------
+# DATA SOURCE
+# ---------------------------------------------------------
 
-# Mine X production targets and actuals (tonnes).
-MINE_X = {
-    "years": YEARS,
-    "actual": [98000, 108000, 119000, 87000, 121000],
-    "target": [100000, 105000, 115000, 110000, 120000],
-}
+BASE_DIR = Path(__file__).resolve().parents[2]
+DATA_FILE = BASE_DIR / "data" / "coal_production.xlsx"
 
+
+def load_production_data():
+    """
+    Load India's annual raw coal production from PT1.
+
+    Values are in Million Tonnes (MT).
+    """
+
+    df = pd.read_excel(
+        DATA_FILE,
+        sheet_name="PT1",
+        header=None,
+    )
+
+    # Locate the row containing "Raw Coal"
+    data = []
+
+    for _, row in df.iterrows():
+        values = row.tolist()
+
+        # Look for financial year values such as 2021-22
+        for i, value in enumerate(values):
+            if isinstance(value, str) and "-" in value:
+                year = value.strip()
+
+                if year in [
+                    "2015-16",
+                    "2016-17",
+                    "2017-18",
+                    "2018-19",
+                    "2019-20",
+                    "2020-21",
+                    "2021-22",
+                    "2022-23",
+                    "2023-24",
+                    "2024-25",
+                ]:
+                    try:
+                        raw_coal = float(values[i + 1])
+                        data.append(
+                            {
+                                "year": year,
+                                "production": raw_coal,
+                            }
+                        )
+                    except (ValueError, TypeError, IndexError):
+                        pass
+
+    # Remove duplicates while preserving order
+    seen = set()
+    cleaned = []
+
+    for item in data:
+        if item["year"] not in seen:
+            seen.add(item["year"])
+            cleaned.append(item)
+
+    return cleaned
+
+
+# Load once when the backend starts
+PRODUCTION_DATA = load_production_data()
+
+YEARS = [item["year"] for item in PRODUCTION_DATA]
+ACTUAL = [item["production"] for item in PRODUCTION_DATA]
+
+MINES = ["India"]
+
+
+# ---------------------------------------------------------
+# PRODUCTION
+# ---------------------------------------------------------
 
 def production_series():
-    """Return Mine X production data plus comparison totals for other mines."""
+    """
+    Return official all-India raw coal production.
+    """
+
     return {
-        "mine": "Mine X",
-        "years": MINE_X["years"],
-        "actual": MINE_X["actual"],
-        "target": MINE_X["target"],
-        "current": 121000,
-        "target_current": 120000,
+        "mine": "India",
+        "years": YEARS,
+        "actual": ACTUAL,
+        "target": None,
+        "current": ACTUAL[-1],
+        "target_current": None,
+        "unit": "Million Tonnes",
     }
 
+
+# ---------------------------------------------------------
+# PERCENTAGE CHANGE
+# ---------------------------------------------------------
 
 def _pct_change(series):
     deltas = []
+
     for i in range(1, len(series)):
-        prev, cur = series[i - 1], series[i]
-        pct = round(((cur - prev) / prev) * 100, 1) if prev else 0
-        deltas.append({"year": YEARS[i], "changePct": pct})
+        previous = series[i - 1]
+        current = series[i]
+
+        pct = (
+            round(((current - previous) / previous) * 100, 2)
+            if previous
+            else 0
+        )
+
+        deltas.append(
+            {
+                "year": YEARS[i],
+                "changePct": pct,
+            }
+        )
+
     return deltas
 
 
+# ---------------------------------------------------------
+# ANOMALY DETECTION
+# ---------------------------------------------------------
+
 def anomalies():
-    """Detect anomalies using a z-score approach on annual % change.
-
-    The 2024 decline (-26.9%) is flagged as the primary high-severity anomaly.
     """
-    actual = MINE_X["actual"]
-    deltas = _pct_change(actual)
+    Detect unusual year-over-year production changes.
 
-    changes = np.array([d["changePct"] for d in deltas], dtype=float)
+    Uses z-score analysis on annual percentage changes.
+    """
+
+    deltas = _pct_change(ACTUAL)
+
+    changes = np.array(
+        [item["changePct"] for item in deltas],
+        dtype=float,
+    )
+
     results = []
+
     if len(changes) >= 2:
+
         mean = changes.mean()
         std = changes.std()
-        for d in deltas:
-            z = abs((d["changePct"] - mean) / std) if std else 0
-            if d["changePct"] < 0 and d["year"] == 2024:
+
+        for item in deltas:
+
+            z_score = (
+                abs((item["changePct"] - mean) / std)
+                if std
+                else 0
+            )
+
+            if abs(item["changePct"]) > 10:
                 severity = "High"
-            elif abs(d["changePct"]) > 15:
-                severity = "High"
-            elif z > 0.8:
+            elif z_score > 1:
                 severity = "Medium"
             else:
                 severity = "Low"
-            results.append({**d, "severity": severity})
-    return {
-        "mine": "Mine X",
-        "anomalies": results,
-        "primary": {
+
+            results.append(
+                {
+                    **item,
+                    "severity": severity,
+                }
+            )
+
+    # Find largest absolute production change
+    primary = max(
+        results,
+        key=lambda x: abs(x["changePct"]),
+    ) if results else None
+
+    if primary:
+
+        explanation = (
+            f"India's raw coal production changed by "
+            f"{primary['changePct']}% in {primary['year']} "
+            f"compared with the previous financial year."
+        )
+
+        primary_result = {
             "id": 1,
-            "title": "Production Drop \u2014 Mine X",
-            "severity": "High",
-            "metric": "Production Volume",
-            "year": 2024,
-            "change": "-26.9%",
-            "explanation": (
-                "2024 production decreased significantly compared with the previous year, "
-                "primarily driven by unplanned shaft maintenance, conveyor downtime, reduced "
-                "labour availability, and monsoon-related water ingress."
-            ),
-            "documentRef": "Mine X Inspection Report",
-        },
+            "title": f"Production Change — India",
+            "severity": primary["severity"],
+            "metric": "Raw Coal Production",
+            "year": primary["year"],
+            "change": f"{primary['changePct']}%",
+            "explanation": explanation,
+            "documentRef": "Coal Directory of India 2024-25",
+        }
+
+    else:
+        primary_result = None
+
+    return {
+        "mine": "India",
+        "anomalies": results,
+        "primary": primary_result,
     }
 
 
-def forecast(horizon=3):
-    """Simple linear-regression forecast for Mine X actual production.
+# ---------------------------------------------------------
+# FORECAST
+# ---------------------------------------------------------
 
-    Clearly labelled as a prototype forecast. Uses numpy polyfit on the
-    historical series and includes a confidence band from residual spread.
+def forecast(horizon=3):
     """
-    x = np.array(YEARS, dtype=float)
-    y = np.array(MINE_X["actual"], dtype=float)
+    Linear trend forecast based on historical
+    official raw coal production.
+    """
+
+    x = np.arange(len(ACTUAL), dtype=float)
+    y = np.array(ACTUAL, dtype=float)
 
     slope, intercept = np.polyfit(x, y, 1)
-    residuals = y - (slope * x + intercept)
+
+    predicted_history = slope * x + intercept
+    residuals = y - predicted_history
+
     std = residuals.std()
 
-    start = YEARS[-1] + 1
-    years_f = list(range(start, start + horizon))
-    values = [round(slope * yr + intercept) for yr in years_f]
-    band = [abs(round(std * 1.5)) for _ in years_f]
+    future_x = np.arange(
+        len(ACTUAL),
+        len(ACTUAL) + horizon,
+        dtype=float,
+    )
+
+    values = [
+        round(slope * point + intercept, 2)
+        for point in future_x
+    ]
+
+    band = abs(round(std * 1.5, 2))
+
+    years_f = []
+
+    last_year = int(YEARS[-1][:4])
+
+    for i in range(1, horizon + 1):
+        years_f.append(f"{last_year + i}-{str(last_year + i + 1)[-2:]}")
 
     return {
-        "mine": "Mine X",
+        "mine": "India",
         "horizon": horizon,
         "years": years_f,
         "values": values,
-        "lower": [v - b for v, b in zip(values, band)],
-        "upper": [v + b for v, b in zip(values, band)],
-        "method": "Linear trend from historical production",
-        "note": "Forecast generated from historical production trends in the demo dataset.",
+        "lower": [round(v - band, 2) for v in values],
+        "upper": [round(v + band, 2) for v in values],
+        "method": "Linear trend from official historical production",
+        "note": (
+            "Prototype forecast generated from historical "
+            "Ministry of Coal production data."
+        ),
+        "unit": "Million Tonnes",
     }
 
 
-def kpis():
-    """Roll up KPI values for the production dashboard."""
-    actual = MINE_X["actual"]
-    years = MINE_X["years"]
-    current = actual[-1]
-    target = MINE_X["target"][-1]
-    prev = actual[-2]
-    change_pct = round(((current - prev) / prev) * 100, 1) if prev else 0
+# ---------------------------------------------------------
+# KPIs
+# ---------------------------------------------------------
 
-    # Count anomalies with severity High/Medium
-    anom = anomalies()
-    anomaly_count = sum(1 for a in anom["anomalies"] if a["severity"] in ("High", "Medium"))
+def kpis():
+    """
+    Calculate dashboard KPI values from official data.
+    """
+
+    current = ACTUAL[-1]
+    previous = ACTUAL[-2]
+
+    change_pct = (
+        round(((current - previous) / previous) * 100, 2)
+        if previous
+        else 0
+    )
+
+    anomaly_data = anomalies()
+
+    anomaly_count = sum(
+        1
+        for item in anomaly_data["anomalies"]
+        if item["severity"] in ("High", "Medium")
+    )
 
     return {
         "currentProduction": current,
-        "target": target,
+        "target": None,
         "changePct": change_pct,
         "anomalies": anomaly_count,
-        "currentYear": years[-1],
+        "currentYear": YEARS[-1],
+        "unit": "Million Tonnes",
     }
+
+
+def state_production():
+    df = pd.read_excel(DATA_FILE, sheet_name="PT25", header=None)
+
+    rows = []
+
+    for _, row in df.iloc[5:15].iterrows():
+        state = row.iloc[0]
+
+        if pd.isna(state) or state == "All India":
+            continue
+
+        production = row.iloc[12]
+
+        if pd.isna(production):
+            production = 0
+
+        rows.append({
+            "state": str(state).strip(),
+            "production": round(float(production), 6),
+            "unit": "Million Tonnes",
+            "year": "2024-25",
+        })
+
+    return rows
+

@@ -1,11 +1,21 @@
 import { useEffect, useState } from "react";
 import { apiJson } from "../api/client";
-import { anomaliesFallback } from "../data/mockData";
+
 import { Icon } from "../components/Icon";
 
 export function Anomalies() {
-  const [data, setData] = useState(anomaliesFallback);
-  useEffect(() => { apiJson("/anomalies").then(setData).catch(() => {}); }, []);
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    apiJson("/anomalies")
+      .then(setData)
+      .catch((error) => console.error("Anomaly API error:", error));
+  }, []);
+
+  if (!data) {
+    return <div className="p-6 text-stone-500">Loading anomalies...</div>;
+  }
+
   const high = data.anomalies.filter((a) => a.severity === "High").length;
   return (
     <div className="space-y-6">
@@ -19,7 +29,7 @@ export function Anomalies() {
         <div className="flex items-start gap-3"><div className="rounded-lg bg-red-100 p-2 text-red-700"><Icon name="orange" /></div><div><div className="text-sm font-semibold text-red-900">{data.primary.title}</div><div className="mt-1 text-2xl font-bold text-red-800">{data.primary.change}</div><p className="mt-2 text-sm leading-6 text-red-700">{data.primary.explanation}</p></div></div>
       </div>
       <div className="rounded-xl border border-stone-200 bg-[#fffaf1] shadow-sm"><div className="border-b border-stone-200 px-5 py-4"><h3 className="font-semibold text-stone-800">Detected signals</h3></div><div className="divide-y divide-stone-100">{data.anomalies.map((a) => <div key={a.year} className="flex items-center justify-between px-5 py-4"><div><div className="font-medium text-stone-800">{a.year} · {a.changePct > 0 ? "+" : ""}{a.changePct}%</div><div className="text-xs text-stone-400">Annual production change vs prior year</div></div><span className={`rounded-full px-3 py-1 text-xs font-semibold ${a.severity === "High" ? "bg-red-50 text-red-700 ring-1 ring-red-200" : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"}`}>{a.severity}</span></div>)}</div></div>
-      <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 text-xs text-stone-500"><b>How it works:</b> the prototype compares historical production changes and statistical deviation to prioritize unusual years for investigation.</div>
+      <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 text-xs text-stone-500"><b>How it works:</b> The system compares year-over-year production changes and statistical deviation to prioritize unusual years for investigation.</div>
     </div>
   );
 }

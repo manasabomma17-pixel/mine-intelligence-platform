@@ -59,6 +59,15 @@ def anomalies():
 def forecast():
     return analytics.forecast(horizon=3)
 
+@router.get("/geology/map")
+def geology_map():
+    return {
+        "year": "2024-25",
+        "unit": "Million Tonnes",
+        "source": "Ministry of Coal, Coal Directory of India 2024-25",
+        "states": analytics.state_production(),
+    }
+
 
 @router.post("/report")
 def create_report():

@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { geologyLayers, mapFeatures, imageInsights, geologyKpis } from "../data/geologyData";
+import { useEffect, useState } from "react";
+import { apiJson } from "../api/client";
+import { geologyLayers, mapFeatures, imageInsights } from "../data/geologyData";
 import { KpiCard } from "../components/KpiCard";
 import { ChartCard } from "../components/ChartCard";
 import { Icon } from "../components/Icon";
@@ -25,6 +26,13 @@ const visualAssets = {
 
 export function Geology() {
   const [selectedFeature, setSelectedFeature] = useState(null);
+  const [mapData, setMapData] = useState(null);
+
+  useEffect(() => {
+    apiJson("/geology/map")
+      .then(setMapData)
+      .catch((error) => console.error("Geology map API error:", error));
+  }, []); 
 
   return (
     <div className="space-y-6">
@@ -36,15 +44,42 @@ export function Geology() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Estimated Reserves" value={geologyKpis.reserves} unit={geologyKpis.reservesUnit} icon={<Icon name="geology" />} accent="green" footer="Mine X coal seam" />
-        <KpiCard label="Seam Thickness" value={geologyKpis.seamThickness} icon={<Icon name="layers" />} accent="blue" footer="Main productive seam" />
-        <KpiCard label="Active Hazards" value={geologyKpis.activeHazards} icon={<Icon name="orange" />} accent="red" footer="Fault line + water ingress" />
-        <KpiCard label="Data Sources" value={geologyKpis.dataSources} icon={<Icon name="image" />} accent="violet" footer="Geological + imagery" />
+        <KpiCard
+          label="Estimated Reserves"
+          value="—"
+          icon={<Icon name="geology" />}
+          accent="green"
+          footer="No verified geological dataset"
+        />
+
+        <KpiCard
+          label="Seam Thickness"
+          value="—"
+          icon={<Icon name="layers" />}
+          accent="blue"
+          footer="No verified geological dataset"
+        />
+
+        <KpiCard
+          label="Active Hazards"
+          value="—"
+          icon={<Icon name="orange" />}
+          accent="red"
+          footer="No verified hazard dataset"
+        />
+
+        <KpiCard
+          label="Data Sources"
+          value="—"
+          icon={<Icon name="image" />}
+          accent="violet"
+          footer="Geological data not connected"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
         <ChartCard
-          title="Mine X Geological Map"
+          title="India Geological Map"
           className="xl:col-span-3"
           action={
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
@@ -69,7 +104,7 @@ export function Geology() {
             </div>
           )}
           <p className="mt-2 text-xs text-stone-400">
-            Visual demo basemap with interpreted Mine X layers and clickable intelligence markers. Not real GIS data.
+            Official geological map data is not connected yet.
           </p>
         </ChartCard>
 
